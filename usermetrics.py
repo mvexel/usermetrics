@@ -36,9 +36,9 @@ def process_history(fullhistoryfilepath):
     cnt = 0
     with BZ2File(fullhistoryfilepath) as f:
         print "starting..."
-        tree = etree.parse(f)
-        osm = tree.getroot()
-        for elem in osm:
+        tree = etree.iterparse(f)
+        osm = tree.next()
+        for action, elem in tree:
             u = elem.get('user')
             id = elem.get('uid')
             t = elem.get('timestamp')
@@ -61,7 +61,9 @@ def process_history(fullhistoryfilepath):
 #                    print 'update existing user %s' % (u, )
                 update_counts(id, type, created)
 #               print "%s %s by %s" % (type, "created" if created else "modified", u)
+            elem.clear()
     print "number of users: %i" % (len(users), )
+    return
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -70,7 +72,8 @@ if __name__ == "__main__":
     if path.exists(args.fullhistoryfilepath):
         process_history(args.fullhistoryfilepath)
         print "finishing, dumping output as JSON"
-        with open(path.join(path.dirname(args.fullhistoryfilepath), 'stats.json'), 'w') as outfile:
+        fname = path.join(path.dirname(args.fullhistoryfilepath), path.basename(args.fullhistoryfilepath).split('.')[0] + '.json')
+        with open(fname, 'w') as outfile:
             outfile.write(json.dumps(users, default=handler))
     else:
         print "%s does not exist, check path" % (args.fullhistoryfilepath, )
