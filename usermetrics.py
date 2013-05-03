@@ -62,7 +62,6 @@ def process_history(fullhistoryfilepath):
                 update_counts(id, type, created)
 #               print "%s %s by %s" % (type, "created" if created else "modified", u)
     print "number of users: %i" % (len(users), )
-    print json.dumps(users, default=handler)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -70,6 +69,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if path.exists(args.fullhistoryfilepath):
         process_history(args.fullhistoryfilepath)
+        print "finishing, dumping output as JSON"
+        with open(path.join(path.dirname(args.fullhistoryfilepath), 'stats.json'), 'w') as outfile:
+            outfile.write(json.dumps(users, default=handler))
     else:
         print "%s does not exist, check path" % (args.fullhistoryfilepath, )
         exit(1)
