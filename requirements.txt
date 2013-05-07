@@ -1,0 +1,11 @@
+argparse==1.2.1
+bz2file==0.95
+guppy==0.1.10
+iso8601==0.1.4
+lxml==3.2.0
+numpy==1.7.1
+objgraph==1.7.2
+pytz==2013b
+simplejson==3.2.0
+wsgiref==0.1.2
+xdot==0.4
