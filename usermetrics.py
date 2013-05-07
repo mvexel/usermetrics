@@ -165,28 +165,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('fullhistoryfilepath', help='Path to the (bzip2ed) OSM full history file')
     parser.add_argument('--stats', help='Output basic stats afterwards', action='store_true')
-    parser.add_argument('--scaffold', help='Use scaffold data', action='store_true')
     parser.add_argument('--cutoff', help='Process only up to this amount of objects')
     args = parser.parse_args()
-    if args.scaffold:
-        jsondata = open('scaffold.json', 'rb')
-        if not jsondata:
-            exit(1)
-        users = json.load(jsondata)
+    if args.cutoff:
+        cutoff = int(args.cutoff)
+    # check if the file even exists
+    if path.exists(args.fullhistoryfilepath):
+        # call the parser
+        process_history(args.fullhistoryfilepath)
+        # final output to file and command line
+        fname = path.join(path.dirname(args.fullhistoryfilepath), path.basename(args.fullhistoryfilepath).split('.')[0] + '.json')
+        print "Dumping output as JSON to %s" % (fname, )
+        with open(fname, 'w') as outfile:
+            outfile.write(json.dumps(users, default=handler))
     else:
-        if args.cutoff:
-            cutoff = int(args.cutoff)
-        # check if the file even exists
-        if path.exists(args.fullhistoryfilepath):
-            # call the parser
-            process_history(args.fullhistoryfilepath)
-            # final output to file and command line
-            fname = path.join(path.dirname(args.fullhistoryfilepath), path.basename(args.fullhistoryfilepath).split('.')[0] + '.json')
-            print "Dumping output as JSON to %s" % (fname, )
-            with open(fname, 'w') as outfile:
-                outfile.write(json.dumps(users, default=handler))
-        else:
-            print "%s does not exist, check path" % (args.fullhistoryfilepath, )
-            exit(1)
+        print "%s does not exist, check path" % (args.fullhistoryfilepath, )
+        exit(1)
     if args.stats:
         generate_stats()
