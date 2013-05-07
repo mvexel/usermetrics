@@ -12,9 +12,63 @@ import pytz
 
 users={}
 cutoff=0
+cnt = 0
+cntn = 0
+cntw = 0
+cntr = 0
 utc=pytz.UTC
 longer_ago = 'longer ago'
 
+class ParseOSMHistory:
+    def start(self, tag, attrib):
+        print cnt
+        if not cnt % 1000 :
+            sys.stdout.write("nodes %i ways %i relations %i total elements %i users %i\r" % (cntn, cntw, cntr, cnt, len(users)))
+    #            if not cnt % 1.0e6:
+    #                h = hpy()
+    #                print h.heap()
+        if not cutoff == 0 and (cntn + cntw + cntr) > cutoff:
+            return
+        # set osm element type identified by xml tag
+        if tag in ('node','way','relation'):
+            if tag == 'node':
+                cntn+=1
+            if tag == 'way':
+                cntw+=1
+            if tag == 'relation':
+                cntr+=1
+            # get salient attributes
+            u = attrib['user']
+            id = attrib['uid']
+            t = attrib['timestamp']
+            v = attrib['version']
+            # parse the date into a python datetime
+            t = iso8601.parse_date(t)
+            # check if the user already exists in the dictionary
+            # set boolean if the object is just created (version 1)
+            created = v == '1'
+            if id not in users:
+                # create object dictionaries
+                nodes = {'created': 0, 'modified': 0, 'deleted': 0}
+                ways = {'created': 0, 'modified': 0, 'deleted': 0}
+                relations = {'created': 0, 'modified': 0, 'deleted': 0}
+                # add the user to the dictionary
+                users[id] = {'first': t, 'last': t, 'name': u, 'nodes': nodes, 'ways': ways, 'relations': relations}
+    #                   print 'added new user %s' % (u, )
+            else:
+                # update existing user
+                # get user data from dictionary
+                uref = users[id]
+                #determine new min / max editing timestamp
+                users[id]['first'] = min(uref['first'], t)
+                users[id]['last'] = max(uref['last'], t)
+            # update all counts
+            update_counts(id, type, created)
+    def end(self, tag):
+        print tag
+    def close(self):
+        return "closed"
+        
 def handler(obj):
     if hasattr(obj, 'isoformat'):
         return obj.isoformat()
@@ -46,10 +100,6 @@ def update_counts(id, type, created):
 def process_history(fullhistoryfilepath):
     '''this is the main xml parsing function'''
     print "processing %s" % (fullhistoryfilepath,)
-    cnt = 0
-    cntn = 0
-    cntw = 0
-    cntr = 0
     if fullhistoryfilepath[-3:].lower() in ('osm','osh'):
         f = open(fullhistoryfilepath, 'rb')
     elif fullhistoryfilepath[-7:].lower() in ('osm.bz2', 'osh.bz2'):
@@ -57,71 +107,10 @@ def process_history(fullhistoryfilepath):
     else:
         print "File needs to be .osm, .osh, .osm.bz2 or .osh.bz2"
         exit(1)
-    with f:
-        print "starting..."
-        # iterate over all elements
-        context = etree.iterparse(f)
-        for action, elem in context:
-            if elem is None:
-                break
-            cnt += 1
-            if not cnt % 1000 :
-                sys.stdout.write("nodes %i ways %i relations %i total elements %i users %i\r" % (cntn, cntw, cntr, cnt, len(users)))
-#            if not cnt % 1.0e6:
-#                h = hpy()
-#                print h.heap()
-            if not cutoff == 0 and (cntn + cntw + cntr) > cutoff:
-                break
-            # set osm element type identified by xml tag
-            type = elem.tag
-            if type in ('node','way','relation'):
-                if type == 'node':
-                    cntn+=1
-                if type == 'way':
-                    cntw+=1
-                if type == 'relation':
-                    cntr+=1
-                # get salient attributes
-                u = elem.get('user')
-                id = elem.get('uid')
-                t = elem.get('timestamp')
-                v = elem.get('version')
-                # parse the date into a python datetime
-                t = iso8601.parse_date(t)
-                # check if the user already exists in the dictionary
-                # set boolean if the object is just created (version 1)
-                created = v == '1'
-                if id not in users:
-                    # create object dictionaries
-                    nodes = {'created': 0, 'modified': 0, 'deleted': 0}
-                    ways = {'created': 0, 'modified': 0, 'deleted': 0}
-                    relations = {'created': 0, 'modified': 0, 'deleted': 0}
-                    # add the user to the dictionary
-                    users[id] = {'first': t, 'last': t, 'name': u, 'nodes': nodes, 'ways': ways, 'relations': relations}
-#                   print 'added new user %s' % (u, )
-                    nodes = None
-                    ways = None
-                    relations = None
-                else:
-                    # update existing user
-                    # get user data from dictionary
-                    uref = users[id]
-                    #determine new min / max editing timestamp
-                    users[id]['first'] = min(uref['first'], t)
-                    users[id]['last'] = max(uref['last'], t)
-                    uref = None
-                # update all counts
-                update_counts(id, type, created)
-                u = None
-                id = None
-                t = None
-                v = None
-                t = None
-                created = None
-            # clear the element object and free the memory
-            elem.clear()
-            type = None
-            action = None
+    print "starting..."
+    # iterate over all elements
+    parser = etree.XMLParser(target=ParseOSMHistory())
+    result = etree.parse(f, parser)
     # print stat
     print "\n"
     return
