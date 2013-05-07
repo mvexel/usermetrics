@@ -20,22 +20,25 @@ utc=pytz.UTC
 longer_ago = 'longer ago'
 
 class ParseOSMHistory:
+    '''The target parser class for the OSM full history XML'''
     def start(self, tag, attrib):
-        print cnt
-        if not cnt % 1000 :
+        '''All data is in the attributes, so the parsing logic is all in the start event'''
+        # emit output every 10000 objects
+        if not cnt % 10000 :
             sys.stdout.write("nodes %i ways %i relations %i total elements %i users %i\r" % (cntn, cntw, cntr, cnt, len(users)))
-    #            if not cnt % 1.0e6:
-    #                h = hpy()
-    #                print h.heap()
+             #if not cnt % 1.0e6:
+             #    h = hpy()
+             #    print h.heap()
+		# check if we have reached the user-defined cutoff, if there is one.
         if not cutoff == 0 and (cntn + cntw + cntr) > cutoff:
             return
-        # set osm element type identified by xml tag
+        # parse only node, way, relation tags
         if tag in ('node','way','relation'):
             if tag == 'node':
                 cntn+=1
-            if tag == 'way':
+            elif tag == 'way':
                 cntw+=1
-            if tag == 'relation':
+            elif tag == 'relation':
                 cntr+=1
             # get salient attributes
             u = attrib['user']
@@ -44,9 +47,9 @@ class ParseOSMHistory:
             v = attrib['version']
             # parse the date into a python datetime
             t = iso8601.parse_date(t)
-            # check if the user already exists in the dictionary
             # set boolean if the object is just created (version 1)
             created = v == '1'
+            # check if the user already exists in the dictionary
             if id not in users:
                 # create object dictionaries
                 nodes = {'created': 0, 'modified': 0, 'deleted': 0}
@@ -54,7 +57,9 @@ class ParseOSMHistory:
                 relations = {'created': 0, 'modified': 0, 'deleted': 0}
                 # add the user to the dictionary
                 users[id] = {'first': t, 'last': t, 'name': u, 'nodes': nodes, 'ways': ways, 'relations': relations}
-    #                   print 'added new user %s' % (u, )
+    			#print 'added new user %s' % (u, )
+    			#clean up
+				nodes, ways, relations = None    
             else:
                 # update existing user
                 # get user data from dictionary
@@ -62,6 +67,8 @@ class ParseOSMHistory:
                 #determine new min / max editing timestamp
                 users[id]['first'] = min(uref['first'], t)
                 users[id]['last'] = max(uref['last'], t)
+                #clean up
+                uref = None
             # update all counts
             update_counts(id, type, created)
     def end(self, tag):
