@@ -8,12 +8,14 @@ import simplejson as json
 from numpy import mean
 from datetime import datetime, timedelta
 import pytz
-#from guppy import hpy
+from guppy import hpy
 
 users={}
 cutoff=0
 utc=pytz.UTC
 longer_ago = 'longer ago'
+firstedit = None
+lastedit = None
 
 def handler(obj):
     if hasattr(obj, 'isoformat'):
@@ -46,6 +48,7 @@ def update_counts(id, type, created):
 def process_history(fullhistoryfilepath):
     '''this is the main xml parsing function'''
     print "processing %s" % (fullhistoryfilepath,)
+    global firstedit, lastedit
     cnt = 0
     cntn = 0
     cntw = 0
@@ -104,12 +107,17 @@ def process_history(fullhistoryfilepath):
                     relations = None
                 else:
                     # update existing user
-                    # get user data from dictionary
-                    uref = users[id]
                     #determine new min / max editing timestamp
-                    users[id]['first'] = min(uref['first'], t)
-                    users[id]['last'] = max(uref['last'], t)
+                    users[id]['first'] = min(users[id]['first'], t)
+                    users[id]['last'] = max(users[id]['last'], t)
                     uref = None
+                # update last edit
+                if firstedit is None:
+                    firstedit = datetime.now().replace(tzinfo=t.tzinfo)
+                if lastedit is None:
+                    lastedit = datetime.fromtimestamp(0).replace(tzinfo=t.tzinfo)
+                lastedit = max(t, lastedit)
+                firstedit = min(t, firstedit)
                 # update all counts
                 update_counts(id, type, created)
                 u = None
@@ -127,15 +135,20 @@ def process_history(fullhistoryfilepath):
     return
 
 def generate_stats():
-    print "\nStats\n=====\n"
+    print "\nStats\n====="
+    print "(Note that these stats are only valid when \
+the input was a full history planet.)\n"
     timespans = []
     thresholds = [30, 180, 365]
     lastmapped = {}
+    print "total users in this area: %i" % (len(users),)
+    print "first edit in this area: %s" % (firstedit, )
+    print "latest edit in this area: %s" % (lastedit, )
     for k in users.keys():
         user = users[k]
         timespans.append((user['last'] - user['first']).total_seconds())
         # mapped in last 30, 180, 360 days?
-        timesincelastmapped = utc.localize(datetime.now()) - user['last']
+        timesincelastmapped = lastedit - user['last']
         hasmappedrecently = False
         for threshold in thresholds:
             if timesincelastmapped < timedelta(threshold):
@@ -156,9 +169,7 @@ def generate_stats():
         else:
             print "%i mappers have not mapped in the last %i days" % (lastmapped[k], max(thresholds),)
     mean_time_mapped = sum(timespans) / len(timespans)
-    print mean_time_mapped
-    mean_days_mapped = (mean_time_mapped - (mean_time_mapped % 60*60*24)) / (60*60*24)
-    print mean_days_mapped
+    print "the average mapper in this area has been active for %i days" % (int(mean_time_mapped/60/60/24),)
     
 if __name__ == "__main__":
     # get command line argument
