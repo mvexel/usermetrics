@@ -20,7 +20,7 @@ def process_files(indir, outdir, infilename):
         with open(path.join(tmpdir, 'batch.conf'), 'wb') as outfile:
             for f in batch:
                 name = path.splitext(path.split(f)[1])[0]
-                outfile.write('%s.osh.bz2\tPOLY\t%s\n' % (os.path.join(outdir,name), path.join(indir,f)))
+                outfile.write('%s.osh.bz2\tPOLY\t%s\n' % (path.join(outdir,name), path.join(indir,f)))
         call([osmhistorysplittercmd, '--hardcut', infilename, path.join(tmpdir, 'batch.conf')])
     print "done" 
 
