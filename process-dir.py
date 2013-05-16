@@ -10,6 +10,7 @@ osmhistorysplittercmd = 'osm-history-splitter'
 
 def process_files(indir, outdir, infilename):
     files = [f for f in listdir(indir) if path.isfile(path.join(indir,f)) and f.endswith(".poly")]
+    dirs = [d for d in listdir(indir) if path.isdir(path.join(indir,f))]
     if len(files) == 0:
         print "this directory does not contain any .poly files."
         exit(1)
@@ -23,6 +24,8 @@ def process_files(indir, outdir, infilename):
                 outfile.write('%s.osh.bz2\tPOLY\t%s\n' % (path.join(outdir,name), path.join(indir,f)))
         call([osmhistorysplittercmd, '--hardcut', infilename, path.join(tmpdir, 'batch.conf')])
     print "done" 
+    while len(dirs) > 0:
+        process_files(path.join(indir,dirs.pop()), outdir, infilename)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
